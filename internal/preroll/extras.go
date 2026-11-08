@@ -62,12 +62,12 @@ func NewNeXrollClient(baseURL, apiKey string) *NeXrollClient {
 
 // GetLibrary fetches prerolls from NeXroll's library.
 func (c *NeXrollClient) GetLibrary() ([]Preroll, error) {
-	req, err := http.NewRequest("GET", c.BaseURL+"/api/prerolls", nil)
+	req, err := http.NewRequest("GET", c.BaseURL+"/external/prerolls", nil)
 	if err != nil {
 		return nil, err
 	}
 	if c.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+		req.Header.Set("X-Api-Key", c.APIKey)
 	}
 
 	resp, err := c.Client.Do(req)
@@ -111,12 +111,12 @@ func (c *NeXrollClient) GetLibrary() ([]Preroll, error) {
 
 // GetSchedule fetches the active schedule from NeXroll.
 func (c *NeXrollClient) GetSchedule() (map[string]interface{}, error) {
-	req, err := http.NewRequest("GET", c.BaseURL+"/api/schedule/active", nil)
+	req, err := http.NewRequest("GET", c.BaseURL+"/external/active-schedules", nil)
 	if err != nil {
 		return nil, err
 	}
 	if c.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+		req.Header.Set("X-Api-Key", c.APIKey)
 	}
 
 	resp, err := c.Client.Do(req)
