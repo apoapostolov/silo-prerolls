@@ -90,12 +90,33 @@ func main() {
 
 	cfg := config.DefaultConfig()
 	pool := &preroll.PrerollPool{}
-	selector := preroll.NewSelector(preroll.SelectionMode(cfg.SelectionMode), cfg.CooldownHours)
+	engine := preroll.NewEngine(preroll.SelectionMode(cfg.SelectionMode), cfg.CooldownHours)
+	engine.Config = &preroll.ConfigRef{
+		CooldownHours:   cfg.CooldownHours,
+		MaturityGating:  cfg.MaturityGating,
+		SessionMode:     cfg.SessionMode,
+		PerUserRules:    make(map[string]preroll.UserRuleRef),
+		LibraryRules:    []preroll.LibraryRuleRef{},
+		OptOuts:         cfg.OptOuts,
+	}
+	for k, v := range cfg.PerUserRules {
+		engine.Config.PerUserRules[k] = preroll.UserRuleRef{Mode: v.Mode, Users: v.Users}
+	}
+	for _, r := range cfg.LibraryRules {
+		engine.Config.LibraryRules = append(engine.Config.LibraryRules, preroll.LibraryRuleRef{
+			Name:        r.Name,
+			Library:     r.Library,
+			ItemType:    r.ItemType,
+			RequireTags: r.RequireTags,
+			ExcludeTags: r.ExcludeTags,
+			Enabled:     r.Enabled,
+		})
+	}
 
 	handler := &api.Handler{
 		Config: &cfg,
 		Pool:   pool,
-		Select: selector,
+		Engine: engine,
 	}
 
 	httpServer := &httpRoutesServer{logger: logger, handler: handler}

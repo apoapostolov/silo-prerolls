@@ -14,9 +14,9 @@ import (
 
 // Handler implements the HTTP routes for the prerolls plugin.
 type Handler struct {
-	Config  *config.Config
-	Pool    *preroll.PrerollPool
-	Select  *preroll.Selector
+	Config *config.Config
+	Pool   *preroll.PrerollPool
+	Engine *preroll.Engine
 }
 
 // Handle processes an incoming HTTP request from Silo.
@@ -38,6 +38,8 @@ func (h *Handler) Handle(req *pluginv1.HandleHTTPRequest) *pluginv1.HandleHTTPRe
 		return h.deleteFolder(path)
 	case method == http.MethodPost && path == "/api/v2/plugins/prerolls/scan":
 		return h.scan()
+	case method == http.MethodPost && path == "/api/v2/plugins/prerolls/skip":
+		return h.recordSkip(req)
 	case method == http.MethodGet && path == "/api/v2/plugins/prerolls/stats":
 		return h.stats()
 	case method == http.MethodGet && path == "/api/v2/plugins/prerolls/discover":
@@ -112,6 +114,29 @@ func (h *Handler) stats() *pluginv1.HandleHTTPResponse {
 	})
 }
 
+func (h *Handler) recordSkip(req *pluginv1.HandleHTTPRequest) *pluginv1.HandleHTTPResponse {
+	var body struct {
+		PrerollID string  `json:"preroll_id"`
+		ItemID    string  `json:"item_id"`
+		Seconds   float64 `json:"seconds"`
+	}
+	if err := json.Unmarshal(req.GetBody(), &body); err != nil {
+		return jsonResponse(400, map[string]string{"error": err.Error()})
+	}
+
+	// Update skip stats on the preroll
+	for i := range h.Pool.Prerolls {
+		if h.Pool.Prerolls[i].ID == body.PrerollID {
+			h.Pool.Prerolls[i].SkipCount++
+			// Running average
+			n := float64(h.Pool.Prerolls[i].SkipCount)
+			h.Pool.Prerolls[i].SkipSeconds = (h.Pool.Prerolls[i].SkipSeconds*(n-1) + body.Seconds) / n
+			break
+		}
+	}
+
+	return jsonResponse(200, map[string]string{"status": "ok"})
+}
 func (h *Handler) discover(req *pluginv1.HandleHTTPRequest) *pluginv1.HandleHTTPResponse {
 	// Query params for item type, library, user, etc.
 	itemID := ""
@@ -126,10 +151,16 @@ func (h *Handler) discover(req *pluginv1.HandleHTTPRequest) *pluginv1.HandleHTTP
 		pool = append(pool, p)
 	}
 
-	selected := h.Select.Select(pool, itemID, "")
+	// Filter pool based on rules
+	filtered := h.Engine.FilterPool(pool, itemID, "", "", "", "", nil)
+
+	selected := h.Engine.Selector.Select(filtered, itemID, "")
 	if selected == nil {
 		return jsonResponse(404, map[string]string{"error": "no preroll available"})
 	}
+
+	// Record play
+	h.Engine.RecordPlay(selected.ID, itemID, "")
 
 	return jsonResponse(200, selected)
 }
