@@ -1,0 +1,3 @@
+*.exe
+silo-prerolls
+go.sum.bak
