@@ -1,4 +1,11 @@
-# 🎬 Silo Prerolls
+# ⚠️ Moved to Monorepo
+
+This repository has been moved to [apos-silo-plugins](https://github.com/apoapostolov/apos-silo-plugins).
+The Silo Prerolls plugin now lives at: https://github.com/apoapostolov/apos-silo-plugins/tree/main/plugins/silo-prerolls
+
+---
+
+# 🎬 Silo Prerolls (archived)
 
 ![Hero](assets/hero.png)
 
